@@ -8,19 +8,20 @@
 
 using namespace std;
 
-float px, py, pxDelta, pyDelta, pAngle; //player position
+//player position
+float playerX, playerY, playerXDelta, playerYDelta, playerAngle;
 
 void drawPlayer() {
 	glColor3f(1, 1, 0);
 	glPointSize(8);
 	glBegin(GL_POINTS);
-	glVertex2i(px, py);
+	glVertex2i(playerX, playerY);
 	glEnd();
 
 	glLineWidth(3);
 	glBegin(GL_LINES);
-	glVertex2i(px, py);
-	glVertex2i(px + pxDelta * 5, py + pyDelta * 5);
+	glVertex2i(playerX, playerY);
+	glVertex2i(playerX + playerXDelta * 5, playerY + playerYDelta * 5);
 	glEnd();
 }
 
@@ -58,6 +59,64 @@ void drawMap2D() {
 	}
 }
 
+void drawRays3d() {
+	int radius, mx, my, mp, depthOfFeel;
+	float radiusX, radiusY, radiusAngle, x0, y0;
+
+	radiusAngle = playerAngle;
+
+	for (radius = 0; radius < 1; radius++) {
+		
+		// ---Check Horizontal Lines
+		depthOfFeel = 0;
+		float aTan = -1 / tan(radiusAngle);
+		
+		if (radiusAngle > PI) {
+			radiusY = (((int)playerY >> 6) << 6) - 0.0001;
+			radiusX = (playerX - radiusY) * aTan + playerX;
+			y0 = -64;
+			x0 = -y0 * aTan;
+		}
+		
+		if (radiusAngle < PI) {
+			radiusY = (((int)playerY >> 6) << 6) + 64;
+			radiusX = (playerX - radiusY) * aTan + playerX;
+			y0 = 64;
+			x0 = -y0 * aTan;
+		}
+
+		if (radiusAngle == 0 || radiusAngle == PI) {
+			radiusX = playerX;
+			depthOfFeel = 8;
+		}
+
+		while (depthOfFeel < 8) {
+			mx = (int)(radiusX) >> 6;
+			my = (int)(radiusY) >> 6;
+			mp = my * mapX + mx;
+
+			// Hit wall
+			if (mp < mapX * mapY && map[mp] == 1) {
+				depthOfFeel = 8;
+			}
+
+			// Next line
+			else {
+				radiusX += x0;
+				radiusY += y0;
+				depthOfFeel += 1;
+			}
+		}
+
+		glColor3f(0, 1, 0);
+		glLineWidth(1);
+		glBegin(GL_LINES);
+		glVertex2i(playerX, playerY);
+		glVertex2i(radiusX, radiusY);
+		glEnd();
+	}
+}
+
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	drawMap2D();
@@ -68,35 +127,35 @@ void display() {
 void buttons(unsigned char key, int x, int y) {
 
 	if (key == 'a') {
-		pAngle -= 0.1;
+		playerAngle -= 0.1;
 		
-		if (pAngle < 0) {
-			pAngle += 2 * PI;
+		if (playerAngle < 0) {
+			playerAngle += 2 * PI;
 		}
 
-		pxDelta = cos(pAngle) * 5;
-		pyDelta = sin(pAngle) * 5;
+		playerXDelta = cos(playerAngle) * 5;
+		playerYDelta = sin(playerAngle) * 5;
 	}
 
 	if (key == 'd') {
-		pAngle += 0.1;
+		playerAngle += 0.1;
 
-		if (pAngle < 0) {
-			pAngle -= 2 * PI;
+		if (playerAngle < 0) {
+			playerAngle -= 2 * PI;
 		}
 
-		pxDelta = cos(pAngle) * 5;
-		pyDelta = sin(pAngle) * 5;
+		playerXDelta = cos(playerAngle) * 5;
+		playerYDelta = sin(playerAngle) * 5;
 	}
 
 	if (key == 'w') {
-		px += pxDelta;
-		py += pyDelta;
+		playerX += playerXDelta;
+		playerY += playerYDelta;
 	}
 
 	if (key == 's') {
-		px -= pxDelta;
-		py -= pyDelta;
+		playerX -= playerXDelta;
+		playerY -= playerYDelta;
 	}
 
 	glutPostRedisplay();
@@ -105,10 +164,10 @@ void buttons(unsigned char key, int x, int y) {
 void init() {
 	glClearColor(0.3, 0.3, 0.3, 0);
 	gluOrtho2D(0, 1024, 512, 0);
-	px = 300; 
-	py = 300; 
-	pxDelta = cos(pAngle) * 5; 
-	pyDelta = sin(pAngle) * 5;
+	playerX = 300; 
+	playerY = 300;
+	playerXDelta = cos(playerAngle) * 5;
+	playerYDelta = sin(playerAngle) * 5;
 }
 
 int main(int argc, char* argv[]) {
