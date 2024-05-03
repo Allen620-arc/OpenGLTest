@@ -71,6 +71,7 @@ void drawRays3d() {
 		depthOfFeel = 0;
 		float aTan = -1 / tan(radiusAngle);
 		
+		// Looking Up
 		if (radiusAngle > PI) {
 			radiusY = (((int)playerY >> 6) << 6) - 0.0001;
 			radiusX = (playerX - radiusY) * aTan + playerX;
@@ -78,6 +79,7 @@ void drawRays3d() {
 			x0 = -y0 * aTan;
 		}
 		
+		// Looking Down
 		if (radiusAngle < PI) {
 			radiusY = (((int)playerY >> 6) << 6) + 64;
 			radiusX = (playerX - radiusY) * aTan + playerX;
@@ -85,6 +87,7 @@ void drawRays3d() {
 			x0 = -y0 * aTan;
 		}
 
+		// Looking Straight, Left or Right
 		if (radiusAngle == 0 || radiusAngle == PI) {
 			radiusX = playerX;
 			depthOfFeel = 8;
