@@ -5,6 +5,8 @@
 #include <iostream>
 #include <math.h>
 #define PI 3.1415926535
+#define P2 PI/2
+#define P3 3*PI/2
 
 using namespace std;
 
@@ -112,7 +114,58 @@ void drawRays3d() {
 		}
 
 		glColor3f(0, 1, 0);
-		glLineWidth(1);
+		glLineWidth(10);
+		glBegin(GL_LINES);
+		glVertex2i(playerX, playerY);
+		glVertex2i(radiusX, radiusY);
+		glEnd();
+
+		// ---Check Vertical Lines
+		depthOfFeel = 0;
+		float nTan = -tan(radiusAngle);
+
+		// Looking Left
+		if (radiusAngle > P2 && radiusAngle < P3) {
+			radiusX = (((int)playerX >> 6) << 6) - 0.0001;
+			radiusY = (playerX - radiusX) * nTan + playerY;
+			x0 = -64;
+			y0 = -x0 * nTan;
+		}
+
+		// Looking Right
+		if (radiusAngle < P2 || radiusAngle > P3) {
+			radiusX = (((int)playerX >> 6) << 6) + 64;
+			radiusY = (playerX - radiusX) * nTan + playerY;
+			x0 = 64;
+			y0 = -x0 * nTan;
+		}
+
+		// Looking Straight, Up or Down
+		if (radiusAngle == 0 || radiusAngle == PI) {
+			radiusX = playerX;
+			depthOfFeel = 8;
+		}
+
+		while (depthOfFeel < 8) {
+			mx = (int)(radiusX) >> 6;
+			my = (int)(radiusY) >> 6;
+			mp = my * mapX + mx;
+
+			// Hit wall
+			if (mp < mapX * mapY && map[mp] == 1) {
+				depthOfFeel = 8;
+			}
+
+			// Next line
+			else {
+				radiusX += x0;
+				radiusY += y0;
+				depthOfFeel += 1;
+			}
+		}
+
+		glColor3f(1, 0, 0);
+		glLineWidth(3);
 		glBegin(GL_LINES);
 		glVertex2i(playerX, playerY);
 		glVertex2i(radiusX, radiusY);
@@ -124,6 +177,7 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	drawMap2D();
 	drawPlayer();
+	drawRays3d();
 	glutSwapBuffers();
 }
 
