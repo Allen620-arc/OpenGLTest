@@ -10,24 +10,9 @@
 
 using namespace std;
 
-//player position
-float playerX, playerY, playerXDelta, playerYDelta, playerAngle;
-
-void drawPlayer() {
-	glColor3f(1, 1, 0);
-	glPointSize(8);
-	glBegin(GL_POINTS);
-	glVertex2i(playerX, playerY);
-	glEnd();
-
-	glLineWidth(3);
-	glBegin(GL_LINES);
-	glVertex2i(playerX, playerY);
-	glVertex2i(playerX + playerXDelta * 5, playerY + playerYDelta * 5);
-	glEnd();
-}
-
+//-----------------------------MAP----------------------------------------------
 int mapX = 8, mapY = 8, mapS = 64;
+
 int map[] = {
 	1, 1, 1, 1, 1, 1, 1, 1,
 	1, 0, 0, 0, 0, 0, 0, 1,
@@ -61,97 +46,132 @@ void drawMap2D() {
 	}
 }
 
+//-----------------------------------------------------------------------------
+
+//------------------------PLAYER------------------------------------------------
+float degToRad(int angle) { 
+	return angle * PI / 180.0;
+}
+
+int FixAng(int angle) {
+	
+	if (angle > 359) {
+		angle -= 360;
+	} 
+	
+	if (angle < 0) {
+		angle += 360;
+	} 
+	
+	return angle;
+}
+
+//player position
+float playerX, playerY, playerXDelta, playerYDelta, playerAngle;
+
+void drawPlayer() {
+	glColor3f(1, 1, 0);
+	glPointSize(8);
+	glLineWidth(4);
+	glBegin(GL_POINTS);
+	glVertex2i(playerX, playerY);
+	glEnd();
+
+	glBegin(GL_LINES);
+	glVertex2i(playerX, playerY);
+	glVertex2i(playerX + playerXDelta * 20, playerY + playerYDelta * 20);
+	glEnd();
+}
+
+void buttons(unsigned char key, int x, int y) {
+
+	if (key == 'a') {
+		playerAngle += 5;
+		playerAngle = FixAng(playerAngle);
+		playerXDelta = cos(degToRad(playerAngle));
+		playerYDelta = -sin(degToRad(playerAngle));
+	}
+
+	if (key == 'd') {
+		playerAngle -= 5;
+		playerAngle = FixAng(playerAngle);
+		playerXDelta = cos(degToRad(playerAngle));
+		playerYDelta = -sin(degToRad(playerAngle));
+	}
+
+	if (key == 'w') {
+		playerX += playerXDelta * 5;
+		playerY += playerYDelta * 5;
+	}
+
+	if (key == 's') {
+		playerX -= playerXDelta * 5;
+		playerY -= playerYDelta * 5;
+	}
+
+	glutPostRedisplay();
+}
+
+//-----------------------------------------------------------------------------
+
+//---------------------------Draw Rays and Walls--------------------------------
+
 float distance(float aX, float aY, float bX, float bY, float angle) {
-	return (sqrt((bX - aX) * (bX - aX) + (bY - aY) * (bY - aY)));
+	return cos(degToRad(angle)) * (bX - aX) - sin(degToRad(angle)) * (bY - aY);
 }
 
 void drawRays2D() {
-	int radius, mx, my, mp, depthOfFeel;
-	float radiusX, radiusY, radiusAngle, x0, y0, distanceTotal;
-	radiusAngle = playerAngle - DR * 30;
 
-	if (radiusAngle < 0) {
-		radiusAngle += 2 * PI;
-	}
+	glColor3f(0, 1, 1); 
+	glBegin(GL_QUADS); 
+	glVertex2i(526, 0); 
+	glVertex2i(1006, 0); 
+	glVertex2i(1006, 160); 
+	glVertex2i(526, 160); 
+	glEnd();
 
-	if (radiusAngle > 2 * PI) {
-		radiusAngle -= 2 * PI;
-	}
+	glColor3f(0, 0, 1); 
+	glBegin(GL_QUADS); 
+	glVertex2i(526, 160); 
+	glVertex2i(1006, 160); 
+	glVertex2i(1006, 320); 
+	glVertex2i(526, 320); 
+	glEnd();
+
+	int radius, mx, my, mp, depthOfFeel, side;
+	float verticalX, verticalY, radiusX, radiusY, radiusAngle, x0, y0, distanceVertical, distanceHorizontal;
+
+	// Ray sets back to 30 degrees
+	radiusAngle = FixAng(playerAngle + 30);
 
 	for (radius = 0; radius < 60; radius++) {
 		
-		//---Check Horizontal Lines---
-		depthOfFeel = 0;
-		float distanceHorizontal = 1000000, horizontalX = playerX, horizontalY = playerY;
-		float aTan = -1 / tan(radiusAngle);
-		
-		// Looking Up
-		if (radiusAngle > PI) {
-			radiusY = (((int)playerY >> 6) << 6) - 0.0001;
-			radiusX = (playerX - radiusY) * aTan + playerX;
-			y0 = -64;
-			x0 = -y0 * aTan;
-		}
-		
-		// Looking Down
-		if (radiusAngle < PI) {
-			radiusY = (((int)playerY >> 6) << 6) + 64;
-			radiusX = (playerX - radiusY) * aTan + playerX;
-			y0 = 64;
-			x0 = -y0 * aTan;
-		}
-
-		// Looking Straight, Left or Right
-		if (radiusAngle == 0 || radiusAngle == PI) {
-			radiusX = playerX;
-			depthOfFeel = 8;
-		}
-
-		while (depthOfFeel < 8) {
-			mx = (int)(radiusX) >> 6;
-			my = (int)(radiusY) >> 6;
-			mp = my * mapX + mx;
-
-			// Hit wall
-			if (mp > 0 && mp < mapX * mapY && map[mp] > 0) {
-				horizontalX = radiusX;
-				horizontalY = radiusY;
-				distanceHorizontal = distance(playerX, playerY, horizontalX, horizontalY, radiusAngle);
-				depthOfFeel = 8;
-			}
-
-			// Next line
-			else {
-				radiusX += x0;
-				radiusY += y0;
-				depthOfFeel += 1;
-			}
-		}
-
 		//---Check Vertical Lines---
 		depthOfFeel = 0;
-		float distanceVertical = 1000000, verticalX = playerX, verticalY = playerY;
-		float nTan = -tan(radiusAngle);
+		side = 0;
+		distanceVertical = 1000000;
+		float Tan = tan(degToRad(radiusAngle));
 
 		// Looking Left
-		if (radiusAngle > P2 && radiusAngle < P3) {
-			radiusX = (((int)playerX >> 6) << 6) - 0.0001;
-			radiusY = (playerX - radiusX) * nTan + playerY;
-			x0 = -64;
-			y0 = -x0 * nTan;
+		if (cos(degToRad(radiusAngle)) > 0.001) {
+			radiusX = (((int)playerX >> 6) << 6) + 64;
+			radiusY = (playerX - radiusX) * Tan + playerY;
+			x0 = 64;
+			y0 = -x0 * Tan;
 		}
 
 		// Looking Right
-		if (radiusAngle < P2 || radiusAngle > P3) {
-			radiusX = (((int)playerX >> 6) << 6) + 64;
-			radiusY = (playerX - radiusX) * nTan + playerY;
-			x0 = 64;
-			y0 = -x0 * nTan;
+		else if (cos(degToRad(radiusAngle)) < -0.001) {
+			radiusX = (((int)playerX >> 6) << 6) - 0.0001;
+			radiusY = (playerX - radiusX) * Tan + playerY;
+			x0 = -64;
+			y0 = -x0 * Tan;
 		}
 
 		// Looking Straight, Up or Down
-		if (radiusAngle == 0 || radiusAngle == PI) {
+		else {
 			radiusX = playerX;
+			radiusY = playerY;
 			depthOfFeel = 8;
 		}
 
@@ -161,11 +181,9 @@ void drawRays2D() {
 			mp = my * mapX + mx;
 
 			// Hit wall
-			if (mp > 0 && mp < mapX * mapY && map[mp] > 0) {
-				verticalX = radiusX;
-				verticalY = radiusY;
-				distanceVertical = distance(playerX, playerY, verticalX, verticalY, radiusAngle);
+			if (mp > 0 && mp < mapX * mapY && map[mp] == 1) {
 				depthOfFeel = 8;
+				distanceVertical = cos(degToRad(radiusAngle)) * (radiusX - playerX) - sin(degToRad(radiusAngle)) * (radiusY - playerY);
 			}
 
 			// Next line
@@ -176,68 +194,104 @@ void drawRays2D() {
 			}
 		}
 
-		// Vertical Wall Hit
-		if (distanceVertical < distanceHorizontal) {
-			radiusX = verticalX;
-			radiusY = verticalY;
-			distanceTotal = distanceVertical;
-			glColor3f(0.9, 0, 0);
+		verticalX = radiusX;
+		verticalY = radiusY;
+
+		//---Check Horizontal Lines---
+		depthOfFeel = 0;
+		distanceHorizontal = 1000000;
+		Tan = 1 / Tan;
+		
+		// Looking Up
+		if (sin(degToRad(radiusAngle)) > 0.001) {
+			radiusY = (((int)playerY >> 6) << 6) - 0.0001;
+			radiusX = (playerX - radiusY) * Tan + playerX;
+			y0 = -64;
+			x0 = -y0 * Tan;
+		}
+		
+		// Looking Down
+		else if (sin(degToRad(radiusAngle)) < -0.001) {
+			radiusY = (((int)playerY >> 6) << 6) + 64;
+			radiusX = (playerX - radiusY) * Tan + playerX;
+			y0 = 64;
+			x0 = -y0 * Tan;
 		}
 
-		// Horizontal Wall Hit
-		if (distanceHorizontal < distanceVertical) {
-			radiusX = horizontalX;
-			radiusY = horizontalY;
-			distanceTotal = distanceHorizontal;
-			glColor3f(0.7, 0, 0);
+		// Looking Straight, Up or Down
+		else {
+			radiusX = playerX;
+			radiusY = playerY;
+			depthOfFeel = 8;
 		}
 
-		glLineWidth(3);
+		while (depthOfFeel < 8) {
+			mx = (int)(radiusX) >> 6;
+			my = (int)(radiusY) >> 6;
+			mp = my * mapX + mx;
+
+			// Hit wall
+			if (mp > 0 && mp < mapX * mapY && map[mp] == 1) {
+				depthOfFeel = 8;
+				distanceHorizontal = cos(degToRad(radiusAngle)) * (radiusX - playerX) - sin(degToRad(radiusAngle)) * (radiusY - playerY);
+			}
+
+			// Next line
+			else {
+				radiusX += x0;
+				radiusY += y0;
+				depthOfFeel += 1;
+			}
+		}
+
+		// Horizontal hit first
+		glColor3f(0, 0.8, 0);
+		if (distanceVertical < distanceHorizontal) { 
+			radiusX = verticalX; 
+			radiusY = verticalY; 
+			distanceHorizontal = distanceVertical; 
+			glColor3f(0, 0.6, 0); 
+		}
+
+		// Draw 2D ray
+		glLineWidth(2);
 		glBegin(GL_LINES);
 		glVertex2i(playerX, playerY);
 		glVertex2i(radiusX, radiusY);
 		glEnd();
 
-		//---Draw 3D Walls---
+		// Fix Fisheye
+		int ca = FixAng(playerAngle - radiusAngle); distanceHorizontal = distanceHorizontal * cos(degToRad(ca));
 
-		float ca = playerAngle - radiusAngle;
-
-		if (ca < 0) {
-			radiusAngle += 2 * PI;
-		}
-		
-		if (radiusAngle += 2 * PI) {
-			radiusAngle -= 2 * PI;
-		}
-
-		distanceTotal = distanceTotal * cos(ca);
-
-		// Line Height
-		float lineHorizontal = (mapS * 320) / distanceTotal;
-		
-		// Line Offset
-		float lineOrigin = 160 - lineHorizontal / 2;
+		// Line height and limit
+		int lineHorizontal = (mapS * 320) / (distanceHorizontal); 
 		
 		if (lineHorizontal > 320) {
 			lineHorizontal = 320;
 		}
 
+		// Line offset
+		int lineOff = 160 - (lineHorizontal >> 1);
+
+		// Draw vertical wall
 		glLineWidth(8);
 		glBegin(GL_LINES);
-		glVertex2i(radius * 8 + 530, lineOrigin);
-		glVertex2i(radius * 8 + 530, lineHorizontal + lineOrigin);
+		glVertex2i(radius * 8 + 530, lineOff);
+		glVertex2i(radius * 8 + 530, lineHorizontal + lineOff);
 		glEnd();
 
-		radiusAngle += DR;
-
-		if (radiusAngle < 0) {
-			radiusAngle += 2 * PI;
-		}
-
-		if (radiusAngle > 2 * PI) {
-			radiusAngle -= 2 * PI;
-		}
+		// Go to next ray
+		radiusAngle = FixAng(radiusAngle - 1);
 	}
+}
+
+void init() {
+	glClearColor(0.3, 0.3, 0.3, 0);
+	gluOrtho2D(0, 1024, 510, 0);
+	playerX = 300;
+	playerY = 300;
+	playerXDelta = cos(degToRad(playerAngle));
+	playerYDelta = -sin(degToRad(playerAngle));
 }
 
 void display() {
@@ -248,58 +302,12 @@ void display() {
 	glutSwapBuffers();
 }
 
-void buttons(unsigned char key, int x, int y) {
-
-	if (key == 'a') {
-		playerAngle -= 0.1;
-		
-		if (playerAngle < 0) {
-			playerAngle += 2 * PI;
-		}
-
-		playerXDelta = cos(playerAngle) * 5;
-		playerYDelta = sin(playerAngle) * 5;
-	}
-
-	if (key == 'd') {
-		playerAngle += 0.1;
-
-		if (playerAngle < 0) {
-			playerAngle -= 2 * PI;
-		}
-
-		playerXDelta = cos(playerAngle) * 5;
-		playerYDelta = sin(playerAngle) * 5;
-	}
-
-	if (key == 'w') {
-		playerX += playerXDelta;
-		playerY += playerYDelta;
-	}
-
-	if (key == 's') {
-		playerX -= playerXDelta;
-		playerY -= playerYDelta;
-	}
-
-	glutPostRedisplay();
-}
-
-void init() {
-	glClearColor(0.3, 0.3, 0.3, 0);
-	gluOrtho2D(0, 1024, 512, 0);
-	playerX = 300; 
-	playerY = 300;
-	playerXDelta = cos(playerAngle) * 5;
-	playerYDelta = sin(playerAngle) * 5;
-}
-
 int main(int argc, char* argv[]) {
 	
 	// Initialize GLUT
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	glutInitWindowSize(1024, 512);
+	glutInitWindowSize(1024, 510);
 	glutCreateWindow("OpenGL Raycasting Demo");
 	init();
 	glutDisplayFunc(display);
